@@ -19,6 +19,7 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
 @pass_config
 def cli(config, token):
     """
+    Manipulates milestones on several github repositories at once.
     """
     if token and len(token) > 0:
         config.github_token = token
