@@ -1,6 +1,9 @@
 import click
 from github import Github
 import os
+from jinja2 import Environment, FileSystemLoader
+
+dirname = os.path.dirname(os.path.abspath(__file__))
 
 GITHUB_REPOS = ( 'teliax/ivy',
                  'teliax/ivy-issues',
@@ -16,6 +19,7 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
 
 @click.group()
 @click.option('--token', help='GitHub access token')
+#@click.argument('repos', nargs=-1)
 @pass_config
 def cli(config, token):
     """
@@ -23,6 +27,8 @@ def cli(config, token):
     """
     if token and len(token) > 0:
         config.github_token = token
+    #if repos:
+    #    config.github_repos = repos
 
 @click.command()
 @click.argument('old_title')
@@ -56,6 +62,12 @@ def close(config, title):
     """ Close the given milestone """
     exec_github(config.github_token, config.github_repos, 'close', title)
 
+@click.command()
+@click.argument('title')
+@pass_config
+def report(config, title):
+    milestone_report(config.github_token, config.github_repos, title, verbose=True)
+
 def exec_github(token, repos, command, title, description='', new_title=''):
     gh = Github(token)
 
@@ -74,10 +86,30 @@ def exec_github(token, repos, command, title, description='', new_title=''):
                     elif command == 'close':
                         milestone.edit(state='closed')
 
+def milestone_report(token, repos, title, verbose=False):
+    gh = Github(token)
+    first_milestone = None
+    issues = {}
+
+    for repo in repos:
+        r = gh.get_repo(repo)
+        milestones = r.get_milestones()
+        for milestone in milestones:
+            if milestone.title == title:
+                if not first_milestone:
+                    first_milestone = milestone
+                issues[r] = r.get_issues(milestone=milestone, state='all')
+    env = Environment()
+    loader = FileSystemLoader(dirname)
+    tmpl  = loader.load(env, 'milestone.md')
+    context=dict(issues=issues, milestone=first_milestone, verbose=verbose)
+    print tmpl.render(context)
+
 cli.add_command(rename)
 cli.add_command(delete)
 cli.add_command(create)
 cli.add_command(close)
+cli.add_command(report)
 
 if __name__ == '__main__':
     cli()
