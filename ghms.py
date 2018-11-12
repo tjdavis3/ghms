@@ -108,7 +108,9 @@ def milestone_report(token, repos, title, verbose=False, label=None):
             if milestone.title == title:
                 if not first_milestone:
                     first_milestone = milestone
-                issues[r] = r.get_issues(milestone=milestone, state='all', labels=label_obj)
+                github_issues = r.get_issues(milestone=milestone, state='all', labels=label_obj)
+                if github_issues.totalCount > 0:
+                    issues[r] = github_issues
     env = Environment()
     loader = FileSystemLoader(dirname)
     tmpl  = loader.load(env, 'milestone.md')
