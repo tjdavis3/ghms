@@ -1,5 +1,6 @@
 import click
 from github import Github
+from github.GithubException import UnknownObjectException
 import os
 from jinja2 import Environment, FileSystemLoader
 
@@ -64,9 +65,11 @@ def close(config, title):
 
 @click.command()
 @click.argument('title')
+@click.option('--detail/--no-detail', default=False)
+@click.option('--label', help="Only report issues with this label")
 @pass_config
-def report(config, title):
-    milestone_report(config.github_token, config.github_repos, title, verbose=True)
+def report(config, title, detail, label=None):
+    milestone_report(config.github_token, config.github_repos, title, verbose=detail, label=label)
 
 def exec_github(token, repos, command, title, description='', new_title=''):
     gh = Github(token)
@@ -86,7 +89,7 @@ def exec_github(token, repos, command, title, description='', new_title=''):
                     elif command == 'close':
                         milestone.edit(state='closed')
 
-def milestone_report(token, repos, title, verbose=False):
+def milestone_report(token, repos, title, verbose=False, label=None):
     gh = Github(token)
     first_milestone = None
     issues = {}
@@ -94,11 +97,18 @@ def milestone_report(token, repos, title, verbose=False):
     for repo in repos:
         r = gh.get_repo(repo)
         milestones = r.get_milestones()
+        label_obj = ""
+        if label:
+            try:
+                l = r.get_label(label)
+                label_obj = [l]
+            except UnknownObjectException:
+                continue
         for milestone in milestones:
             if milestone.title == title:
                 if not first_milestone:
                     first_milestone = milestone
-                issues[r] = r.get_issues(milestone=milestone, state='all')
+                issues[r] = r.get_issues(milestone=milestone, state='all', labels=label_obj)
     env = Environment()
     loader = FileSystemLoader(dirname)
     tmpl  = loader.load(env, 'milestone.md')
