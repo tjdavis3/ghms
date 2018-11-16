@@ -87,7 +87,7 @@ def exec_github(token, repos, command, title, description='', new_title=''):
                     elif command == 'rename':
                         milestone.edit(title=new_title)
                     elif command == 'close':
-                        milestone.edit(state='closed')
+                        milestone.edit(title, state='closed')
 
 def milestone_report(token, repos, title, verbose=False, label=None):
     gh = Github(token)
